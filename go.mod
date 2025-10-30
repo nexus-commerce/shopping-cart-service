@@ -1,11 +1,11 @@
 module shopping-cart-service
 
-go 1.25.3
+go 1.24.5
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
-	github.com/nexus-commerce/nexus-contracts-go v0.0.12
+	github.com/nexus-commerce/nexus-contracts-go v0.0.2
 	github.com/redis/go-redis/v9 v9.12.1
 	google.golang.org/grpc v1.76.0
 )
