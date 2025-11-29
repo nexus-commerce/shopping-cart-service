@@ -7,10 +7,15 @@ import (
 	"fmt"
 	product "github.com/nexus-commerce/nexus-contracts-go/product/v1"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"time"
 )
 
-var ErrItemNotFound = errors.New("item not found in cart")
+var (
+	ErrItemNotFound    = errors.New("item not found in cart")
+	ErrProductNotFound = errors.New("product not found")
+)
 
 type ShoppingCart struct {
 	redisClient   *redis.Client
@@ -62,6 +67,9 @@ func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32
 
 	p, err := c.productClient.GetProductBySKU(ctx, &product.GetProductBySKURequest{Sku: sku})
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ErrProductNotFound
+		}
 		return nil, err
 	}
 

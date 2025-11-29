@@ -8,7 +8,6 @@ import (
 	pb "github.com/nexus-commerce/nexus-contracts-go/cart/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
 	"shopping-cart-service/internal/cart"
 )
 
@@ -65,7 +64,9 @@ func (s *Server) AddItem(ctx context.Context, r *pb.AddItemRequest) (*pb.AddItem
 
 	item, err := s.Cart.AddItem(ctx, userIDInt, r.GetQuantity(), r.GetSku())
 	if err != nil {
-		log.Println(err)
+		if errors.Is(err, cart.ErrProductNotFound) {
+			return nil, status.Error(codes.NotFound, "product not found")
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
