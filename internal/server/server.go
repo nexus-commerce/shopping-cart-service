@@ -62,13 +62,22 @@ func (s *Server) AddItem(ctx context.Context, r *pb.AddItemRequest) (*pb.AddItem
 
 	userIDInt := int64(userID)
 
-	err := s.Cart.AddItem(ctx, userIDInt, r.GetQuantity(), r.GetSku())
+	item, err := s.Cart.AddItem(ctx, userIDInt, r.GetQuantity(), r.GetSku())
 	if err != nil {
 		log.Println(err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.AddItemResponse{}, nil
+	return &pb.AddItemResponse{
+		Item: &pb.CartItem{
+			Quantity:       item.Quantity,
+			Price:          item.Price,
+			Sku:            r.GetSku(),
+			Name:           item.Name,
+			ImageUrl:       item.ImageURL,
+			ItemTotalPrice: item.ItemTotalPrice,
+		},
+	}, nil
 }
 
 func (s *Server) UpdateItem(ctx context.Context, r *pb.UpdateItemRequest) (*pb.UpdateItemResponse, error) {
@@ -79,12 +88,21 @@ func (s *Server) UpdateItem(ctx context.Context, r *pb.UpdateItemRequest) (*pb.U
 
 	userIDInt := int64(userID)
 
-	err := s.Cart.UpdateItemQuantity(ctx, userIDInt, r.GetQuantity(), r.GetSku())
+	item, err := s.Cart.UpdateItemQuantity(ctx, userIDInt, r.GetQuantity(), r.GetSku())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.UpdateItemResponse{}, nil
+	return &pb.UpdateItemResponse{
+		Item: &pb.CartItem{
+			Quantity:       item.Quantity,
+			Price:          item.Price,
+			Sku:            r.GetSku(),
+			Name:           item.Name,
+			ImageUrl:       item.ImageURL,
+			ItemTotalPrice: item.ItemTotalPrice,
+		},
+	}, nil
 }
 
 func (s *Server) RemoveItem(ctx context.Context, r *pb.RemoveItemRequest) (*pb.RemoveItemResponse, error) {

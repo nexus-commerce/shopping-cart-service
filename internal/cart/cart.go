@@ -54,15 +54,15 @@ func (c *ShoppingCart) GetCart(ctx context.Context, userID int64) (map[string]st
 	return res, totalPrice, totalItems, err
 }
 
-func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32, sku string) error {
+func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32, sku string) (*Item, error) {
 	key := fmt.Sprintf("cart:%d", userID)
 
 	p, err := c.productClient.GetProductBySKU(ctx, &product.GetProductBySKURequest{Sku: sku})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	value := Item{
+	item := Item{
 		Quantity:       quantity,
 		Price:          p.Product.Price,
 		Name:           p.Product.Name,
@@ -70,56 +70,56 @@ func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32
 		ItemTotalPrice: float64(quantity) * p.Product.Price,
 	}
 
-	encodedValue, err := json.Marshal(value)
+	encodedValue, err := json.Marshal(item)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = c.redisClient.HSet(ctx, key, sku, encodedValue).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = c.redisClient.Expire(ctx, key, time.Duration(c.ttl)*time.Second).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &item, nil
 }
 
-func (c *ShoppingCart) UpdateItemQuantity(ctx context.Context, userID int64, quantity int32, sku string) error {
+func (c *ShoppingCart) UpdateItemQuantity(ctx context.Context, userID int64, quantity int32, sku string) (*Item, error) {
 	key := fmt.Sprintf("cart:%d", userID)
-	item, err := c.redisClient.HGet(ctx, key, sku).Result()
+	result, err := c.redisClient.HGet(ctx, key, sku).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var value Item
+	var item Item
 
-	err = json.Unmarshal([]byte(item), &value)
+	err = json.Unmarshal([]byte(result), &item)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	value.Quantity = quantity
+	item.Quantity = quantity
 
-	encodedValue, err := json.Marshal(value)
+	encodedValue, err := json.Marshal(item)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = c.redisClient.HSet(ctx, key, sku, encodedValue).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = c.redisClient.Expire(ctx, key, time.Duration(c.ttl)*time.Second).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &item, nil
 
 }
 
