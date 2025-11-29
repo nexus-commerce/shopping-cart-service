@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	pb "github.com/nexus-commerce/nexus-contracts-go/cart/v1"
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,7 @@ type Server struct {
 func (s *Server) GetCart(ctx context.Context, _ *pb.GetCartRequest) (*pb.GetCartResponse, error) {
 	userID, ok := ctx.Value("user-id").(int)
 	if !ok {
-		return nil, status.Error(codes.FailedPrecondition, "user id missing")
+		return nil, status.Error(codes.Internal, "user id missing")
 	}
 
 	userIDInt := int64(userID)
@@ -57,7 +58,7 @@ func (s *Server) GetCart(ctx context.Context, _ *pb.GetCartRequest) (*pb.GetCart
 func (s *Server) AddItem(ctx context.Context, r *pb.AddItemRequest) (*pb.AddItemResponse, error) {
 	userID, ok := ctx.Value("user-id").(int)
 	if !ok {
-		return nil, status.Error(codes.FailedPrecondition, "user id missing") // return FAILED_PRECONDITION status here as the system should never get into this state
+		return nil, status.Error(codes.Internal, "user id missing") // return FAILED_PRECONDITION status here as the system should never get into this state
 	}
 
 	userIDInt := int64(userID)
@@ -83,13 +84,16 @@ func (s *Server) AddItem(ctx context.Context, r *pb.AddItemRequest) (*pb.AddItem
 func (s *Server) UpdateItem(ctx context.Context, r *pb.UpdateItemRequest) (*pb.UpdateItemResponse, error) {
 	userID, ok := ctx.Value("user-id").(int)
 	if !ok {
-		return nil, status.Error(codes.FailedPrecondition, "user id missing") // return FAILED_PRECONDITION status here as the system should never get into this state
+		return nil, status.Error(codes.Internal, "user id missing") // return FAILED_PRECONDITION status here as the system should never get into this state
 	}
 
 	userIDInt := int64(userID)
 
 	item, err := s.Cart.UpdateItemQuantity(ctx, userIDInt, r.GetQuantity(), r.GetSku())
 	if err != nil {
+		if errors.Is(err, cart.ErrItemNotFound) {
+			return nil, status.Error(codes.NotFound, "item not found in cart")
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -108,7 +112,7 @@ func (s *Server) UpdateItem(ctx context.Context, r *pb.UpdateItemRequest) (*pb.U
 func (s *Server) RemoveItem(ctx context.Context, r *pb.RemoveItemRequest) (*pb.RemoveItemResponse, error) {
 	userID, ok := ctx.Value("user-id").(int)
 	if !ok {
-		return nil, status.Error(codes.FailedPrecondition, "user id missing") // return FAILED_PRECONDITION status here as the system should never get into this state
+		return nil, status.Error(codes.Internal, "user id missing")
 	}
 
 	userIDInt := int64(userID)
@@ -121,7 +125,7 @@ func (s *Server) RemoveItem(ctx context.Context, r *pb.RemoveItemRequest) (*pb.R
 func (s *Server) ClearCart(ctx context.Context, _ *pb.ClearCartRequest) (*pb.ClearCartResponse, error) {
 	userID, ok := ctx.Value("user-id").(int)
 	if !ok {
-		return nil, status.Error(codes.FailedPrecondition, "user id missing")
+		return nil, status.Error(codes.Internal, "user id missing")
 	}
 
 	userIDInt := int64(userID)

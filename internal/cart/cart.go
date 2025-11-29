@@ -3,11 +3,14 @@ package cart
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	product "github.com/nexus-commerce/nexus-contracts-go/product/v1"
 	"github.com/redis/go-redis/v9"
 	"time"
 )
+
+var ErrItemNotFound = errors.New("item not found in cart")
 
 type ShoppingCart struct {
 	redisClient   *redis.Client
@@ -92,6 +95,9 @@ func (c *ShoppingCart) UpdateItemQuantity(ctx context.Context, userID int64, qua
 	key := fmt.Sprintf("cart:%d", userID)
 	result, err := c.redisClient.HGet(ctx, key, sku).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, ErrItemNotFound
+		}
 		return nil, err
 	}
 
