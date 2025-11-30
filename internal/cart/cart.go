@@ -13,8 +13,11 @@ import (
 )
 
 var (
-	ErrItemNotFound    = errors.New("item not found in cart")
-	ErrProductNotFound = errors.New("product not found")
+	ErrItemNotFound      = errors.New("item not found in cart")
+	ErrProductNotFound   = errors.New("product not found")
+	ErrInsufficientStock = errors.New("insufficient stock for product")
+	ErrInvalidQuantity   = errors.New("invalid quantity")
+	ErrInvalidSKU        = errors.New("invalid SKU")
 )
 
 type ShoppingCart struct {
@@ -63,6 +66,14 @@ func (c *ShoppingCart) GetCart(ctx context.Context, userID int64) (map[string]st
 }
 
 func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32, sku string) (*Item, error) {
+	if quantity <= 0 {
+		return nil, ErrInvalidQuantity
+	}
+
+	if sku == "" {
+		return nil, ErrInvalidSKU
+	}
+
 	key := fmt.Sprintf("cart:%d", userID)
 
 	p, err := c.productClient.GetProductBySKU(ctx, &product.GetProductBySKURequest{Sku: sku})
@@ -71,6 +82,10 @@ func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32
 			return nil, ErrProductNotFound
 		}
 		return nil, err
+	}
+
+	if p.GetProduct().GetStockQuantity() < quantity {
+		return nil, ErrInsufficientStock
 	}
 
 	item := Item{
@@ -100,13 +115,34 @@ func (c *ShoppingCart) AddItem(ctx context.Context, userID int64, quantity int32
 }
 
 func (c *ShoppingCart) UpdateItemQuantity(ctx context.Context, userID int64, quantity int32, sku string) (*Item, error) {
+	if quantity <= 0 {
+		return nil, ErrInvalidQuantity
+	}
+
+	if sku == "" {
+		return nil, ErrInvalidSKU
+	}
+
 	key := fmt.Sprintf("cart:%d", userID)
+
 	result, err := c.redisClient.HGet(ctx, key, sku).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, ErrItemNotFound
 		}
 		return nil, err
+	}
+
+	p, err := c.productClient.GetProductBySKU(ctx, &product.GetProductBySKURequest{Sku: sku})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ErrProductNotFound
+		}
+		return nil, err
+	}
+
+	if p.GetProduct().GetStockQuantity() < quantity {
+		return nil, ErrInsufficientStock
 	}
 
 	var item Item
